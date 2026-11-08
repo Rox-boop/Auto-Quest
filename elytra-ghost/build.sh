@@ -42,6 +42,7 @@ fi
 # libs-manifest-1.21.11.csv (url,sha1 per line) comes straight from Mojang's version manifest.
 DEPS_CP=""
 while IFS=, read -r url sha1; do
+  url="${url%$'\r'}"; sha1="${sha1%$'\r'}" # strip CR if this file was checked out with CRLF (e.g. on Windows)
   [ -z "$url" ] && continue
   f="libs/deps/$(basename "$url")"
   if [ ! -f "$f" ] || [ "$(sha1sum "$f" | cut -d' ' -f1)" != "$sha1" ]; then
