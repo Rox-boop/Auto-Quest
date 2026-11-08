@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # Usage: ./build.sh [test]   Needs a JDK 21+ (javac, jar) and curl.
 #
-# Compiles two source roots:
+# Compiles two source roots (this script does NOT touch src/fabric - that is the Fabric
+# loader bridge, built separately by tools/build-fabric-bridge.sh after this script, see
+# that script's header for why):
 #   src/main/java          - the version-independent client (named packages, eg.*)
-#   src/main/java_unnamed  - per-build bridges that reference the real obfuscated game
-#                            classes directly, so they must live in Java's unnamed package
-#                            too (a named package cannot import an unnamed-package type).
-#                            These compile against Mojang's official, unmodified client.jar,
-#                            downloaded straight from Mojang below and cached in libs/ -
-#                            never committed to the repo (it is not ours to redistribute).
-#                            The .jar itself is never bundled into the output: only our own
-#                            compiled bridge classes are, and they resolve against the real
-#                            game classes at runtime once injected into Minecraft.
+#   src/main/java_unnamed  - the vanilla-launcher bridge. It references the real obfuscated
+#                            game classes directly, so it must live in Java's unnamed
+#                            package too (a named package cannot import an unnamed-package
+#                            type). It compiles against Mojang's official, unmodified
+#                            client.jar, downloaded straight from Mojang below and cached
+#                            in libs/ - never committed to the repo (not ours to
+#                            redistribute). The jar itself is never bundled into the
+#                            output: only our own compiled bridge classes are, and they
+#                            resolve against the real game classes at runtime once
+#                            injected into Minecraft.
 set -euo pipefail
 cd "$(dirname "$0")"
 

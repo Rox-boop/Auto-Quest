@@ -12,7 +12,10 @@ public final class BridgeLoader {
 
     /** Fully-qualified names of GameBridge implementations to try, most specific first. */
     private static final String[] CANDIDATES = {
-        "VanillaBridge" // Minecraft 1.21.11, official vanilla launcher (unnamed package - see its javadoc)
+        "VanillaBridge", // Minecraft 1.21.11, official vanilla launcher (unnamed package - see its javadoc)
+        "eg.bridge.fabric121_11.FabricBridge" // Minecraft 1.21.11 under Fabric loader - only
+        // present in the jar if built with tools/build-fabric-bridge.sh (see that script
+        // and src/fabric/eg/bridge/fabric121_11/Mapping.java for why it's a separate build)
     };
 
     public static void tryInstall() {
