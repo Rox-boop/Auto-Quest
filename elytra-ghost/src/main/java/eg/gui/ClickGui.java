@@ -20,7 +20,9 @@ public final class ClickGui extends JFrame {
                 GhostClient.get().onPanic(() -> SwingUtilities.invokeLater(() -> { if (instance != null) instance.setVisible(false); }));
             }
             instance.setVisible(true);
+            instance.setExtendedState(JFrame.NORMAL);
             instance.toFront();
+            instance.requestFocus();
         });
     }
 
@@ -31,7 +33,14 @@ public final class ClickGui extends JFrame {
 
     private ClickGui() {
         super("Elytra Ghost");
-        setUndecorated(true);
+        // Deliberately a normal, decorated, fully opaque window: an undecorated window with
+        // a per-pixel-transparent background depends on the desktop compositor supporting
+        // translucency for THIS window's GraphicsConfiguration. When it doesn't (seen in
+        // practice running inside the same process as a game that grabbed an exclusive
+        // OpenGL/DirectX surface), Swing doesn't fall back to an opaque window - the whole
+        // window just never becomes visible, with no exception thrown anywhere. A normal
+        // decorated JFrame has no such dependency: it always renders and always gets a
+        // taskbar entry.
         setAlwaysOnTop(true);
         setDefaultCloseOperation(HIDE_ON_CLOSE);
         setSize(560, 520);
@@ -40,12 +49,11 @@ public final class ClickGui extends JFrame {
         JPanel root = new JPanel(new BorderLayout()) {
             @Override protected void paintComponent(Graphics g0) {
                 Graphics2D g = (Graphics2D) g0; Widgets.quality(g);
-                g.setColor(Theme.BG); g.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
-                g.setPaint(Widgets.accent(0, getWidth())); g.fillRect(18, 0, getWidth() - 36, 3);
+                g.setColor(Theme.BG); g.fillRect(0, 0, getWidth(), getHeight());
+                g.setPaint(Widgets.accent(0, getWidth())); g.fillRect(0, 0, getWidth(), 3);
             }
         };
-        root.setOpaque(false);
-        setBackground(new Color(0, 0, 0, 0));
+        root.setOpaque(true);
         setContentPane(root);
 
         root.add(header(), BorderLayout.NORTH);
