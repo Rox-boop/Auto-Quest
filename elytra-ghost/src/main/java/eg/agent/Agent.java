@@ -1,5 +1,6 @@
 package eg.agent;
 
+import eg.bridge.BridgeLoader;
 import eg.core.GhostClient;
 import eg.gui.ClickGui;
 
@@ -19,6 +20,7 @@ public final class Agent {
     private static void boot(Instrumentation inst) {
         if (!LOADED.compareAndSet(false, true)) { GhostClient.log("already loaded"); return; }
         try {
+            BridgeLoader.tryInstall();
             GhostClient.get().start(inst);
             ClickGui.open();
             GhostClient.log("loaded");
