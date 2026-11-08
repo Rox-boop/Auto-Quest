@@ -208,6 +208,23 @@ public final class VanillaBridge implements GameBridge {
         }
     }
 
+    private java.lang.reflect.Field windowField; // gfj.O (Window) - private, cached reflective access
+
+    @Override
+    public long windowHandle() {
+        try {
+            if (windowField == null) {
+                windowField = gfj.class.getDeclaredField("O");
+                windowField.setAccessible(true);
+            }
+            fyk window = (fyk) windowField.get(mc());
+            return window == null ? 0 : window.h(); // Window.handle()
+        } catch (Throwable t) {
+            GhostClient.log("VanillaBridge.windowHandle() failed: " + t);
+            return 0;
+        }
+    }
+
     // --- helpers ---
 
     private int findHotbarSlot(Item item) {

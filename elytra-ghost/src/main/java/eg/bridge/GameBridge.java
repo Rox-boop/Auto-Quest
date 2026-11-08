@@ -33,4 +33,12 @@ public interface GameBridge {
     boolean startGliding();
     void setRotation(float yaw, float pitch);
     boolean attackKeyDown();
+
+    /**
+     * The game window's native GLFW handle (see org.lwjgl.glfw.GLFW), or 0 if unknown/not
+     * resolvable for this bridge. Used only to poll a raw key state (e.g. Right Shift to
+     * open the external menu) with GLFW directly - LWJGL's own classes are the same for
+     * every launcher, only the Minecraft object that owns the Window differs per bridge.
+     */
+    long windowHandle();
 }

@@ -84,6 +84,9 @@
  * net.minecraft.client.KeyMapping                        -> gfh
  *   boolean isDown()                                    -> f()
  *   void setDown(boolean)                               -> a(boolean)
+ * com.mojang.blaze3d.platform.Window                     -> fyk
+ *   long handle()                                       -> h()
+ * net.minecraft.client.Minecraft.window (field, PRIVATE) -> gfj.O (needs reflection)
  */
 final class Mapping {
     private Mapping() {}

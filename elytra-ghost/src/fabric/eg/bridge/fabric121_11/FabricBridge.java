@@ -23,6 +23,7 @@ import net.minecraft.class_238; // AABB
 import net.minecraft.class_7923; // BuiltInRegistries
 import net.minecraft.class_7922; // DefaultedRegistry
 import net.minecraft.class_2960; // Identifier
+import net.minecraft.class_1041; // Window
 
 import java.util.ArrayList;
 import java.util.List;
@@ -192,6 +193,23 @@ public final class FabricBridge implements GameBridge {
             return mc().field_1690.field_1886.method_1434(); // keyAttack.isDown()
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    private java.lang.reflect.Field windowField; // class_310.field_1704 (Window) - private, cached reflective access
+
+    @Override
+    public long windowHandle() {
+        try {
+            if (windowField == null) {
+                windowField = class_310.class.getDeclaredField("field_1704");
+                windowField.setAccessible(true);
+            }
+            class_1041 window = (class_1041) windowField.get(mc());
+            return window == null ? 0 : window.method_4490(); // Window.handle()
+        } catch (Throwable t) {
+            GhostClient.log("FabricBridge.windowHandle() failed: " + t);
+            return 0;
         }
     }
 

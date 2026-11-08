@@ -7,7 +7,11 @@ import eg.modules.AutoTotem;
 import eg.modules.ElytraSwap;
 import eg.modules.TargetAim;
 
+import org.lwjgl.glfw.GLFW;
+
+import java.io.File;
 import java.lang.instrument.Instrumentation;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -24,6 +28,9 @@ public final class GhostClient {
     private ScheduledExecutorService ticker;
     private ScheduledFuture<?> tickTask;
     private Runnable onPanic = () -> {};
+    private final ControlServer controlServer = new ControlServer();
+    private boolean menuKeyWasDown;
+    private Process menuProcess;
 
     private GhostClient() {}
 
@@ -36,6 +43,7 @@ public final class GhostClient {
     public synchronized void start(Instrumentation inst) {
         instrumentation = inst;
         if (tickTask != null) return;
+        controlServer.start();
         ticker = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "eg-ticker");
             t.setDaemon(true);
@@ -49,6 +57,7 @@ public final class GhostClient {
         GameBridge b = bridge;
         boolean ready;
         try { ready = b.ready(); } catch (Throwable t) { ready = false; }
+        pollMenuKey(b, ready);
         if (!ready) return;
         for (Module m : modules) {
             if (!m.isEnabled()) continue;
@@ -58,6 +67,52 @@ public final class GhostClient {
                 m.setEnabled(false);
             }
         }
+    }
+
+    /**
+     * Right Shift opens/closes the menu. The menu is a separate, freshly started JVM
+     * process (see eg.gui.StandaloneGui) because this game process is typically launched
+     * headless (-Djava.awt.headless=true - Minecraft itself never needs AWT), which blocks
+     * any Swing/AWT window from ever working inside it, even after flipping the property
+     * back - once the JVM's native windowing subsystem decided at startup it didn't need to
+     * initialize, there's no undoing that from inside the same process. A separate process
+     * started fresh (not inheriting that flag) has no such problem.
+     */
+    private void pollMenuKey(GameBridge b, boolean ready) {
+        if (!ready) return;
+        long handle;
+        try { handle = b.windowHandle(); } catch (Throwable t) { handle = 0; }
+        if (handle == 0) return;
+        boolean down;
+        try { down = GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS; }
+        catch (Throwable t) { return; }
+        if (down && !menuKeyWasDown) toggleMenu();
+        menuKeyWasDown = down;
+    }
+
+    private void toggleMenu() {
+        if (menuProcess != null && menuProcess.isAlive()) {
+            menuProcess.destroy();
+            menuProcess = null;
+            return;
+        }
+        try {
+            String javaHome = System.getProperty("java.home");
+            String bin = javaHome + File.separator + "bin" + File.separator
+                    + (System.getProperty("os.name", "").toLowerCase().contains("win") ? "javaw.exe" : "java");
+            String jar = ownJar();
+            menuProcess = new ProcessBuilder(bin, "-cp", jar, "eg.gui.StandaloneGui")
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+        } catch (Throwable t) {
+            log("failed to launch menu process: " + t);
+        }
+    }
+
+    private static String ownJar() throws URISyntaxException {
+        File f = new File(GhostClient.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        return f.getAbsolutePath();
     }
 
     /** Disable everything and hide the GUI. */
@@ -74,6 +129,8 @@ public final class GhostClient {
         panic();
         if (tickTask != null) { tickTask.cancel(false); tickTask = null; }
         if (ticker != null) { ticker.shutdownNow(); ticker = null; }
+        controlServer.stop();
+        if (menuProcess != null) { menuProcess.destroy(); menuProcess = null; }
     }
 
     public static void log(String s) { System.err.println("[elytra-ghost] " + s); }

@@ -62,7 +62,7 @@ done < libs-manifest-1.21.11.csv
 
 rm -rf out && mkdir -p out/classes out/test
 
-javac --release 21 -Xlint:all -d out/classes $(find src/main/java -name '*.java')
+javac --release 21 -Xlint:all -cp "${DEPS_CP#$CP_SEP}" -d out/classes $(find src/main/java -name '*.java')
 javac --release 21 -Xlint:all -cp "out/classes${CP_SEP}${CLIENT_JAR}${DEPS_CP}" -d out/classes $(find src/main/java_unnamed -name '*.java')
 
 printf 'Main-Class: eg.inject.Injector\nAgent-Class: eg.agent.Agent\nPremain-Class: eg.agent.Agent\nCan-Retransform-Classes: false\nCan-Redefine-Classes: false\n' > out/manifest.mf

@@ -19,4 +19,5 @@ public final class UnresolvedBridge implements GameBridge {
     @Override public boolean startGliding() { return false; }
     @Override public void setRotation(float yaw, float pitch) {}
     @Override public boolean attackKeyDown() { return false; }
+    @Override public long windowHandle() { return 0; }
 }

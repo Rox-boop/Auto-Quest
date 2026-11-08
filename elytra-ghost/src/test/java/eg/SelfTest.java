@@ -34,6 +34,7 @@ public final class SelfTest {
         public boolean startGliding() { glideStarts++; return true; }
         public void setRotation(float y, float p) { yaw = y; pitch = p; rotSet = true; }
         public boolean attackKeyDown() { return key; }
+        public long windowHandle() { return 0; }
     }
 
     static Self me(Vec3 vel, float yaw, float pitch, boolean gliding, boolean ground, float hp) {
