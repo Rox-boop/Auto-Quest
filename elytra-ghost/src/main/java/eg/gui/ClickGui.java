@@ -14,16 +14,46 @@ public final class ClickGui extends JFrame {
     private static ClickGui instance;
 
     public static void open() {
+        // This runs on the Swing EDT, not the thread that called open(), so any exception
+        // here would otherwise never reach GhostClient's own try/catch - it would only hit
+        // whatever (if anything) the host process installed as the EDT's own uncaught
+        // exception handler, which may log somewhere this agent's caller never sees. Catch
+        // and log it ourselves, to both stderr and a crash file next to the jar, so a
+        // failure here is never silently invisible.
         SwingUtilities.invokeLater(() -> {
-            if (instance == null) {
-                instance = new ClickGui();
-                GhostClient.get().onPanic(() -> SwingUtilities.invokeLater(() -> { if (instance != null) instance.setVisible(false); }));
+            try {
+                boolean headless = GraphicsEnvironment.isHeadless();
+                GhostClient.log("ClickGui.open(): headless=" + headless
+                        + " screens=" + GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices().length);
+                if (instance == null) {
+                    instance = new ClickGui();
+                    GhostClient.get().onPanic(() -> SwingUtilities.invokeLater(() -> { if (instance != null) instance.setVisible(false); }));
+                }
+                instance.setVisible(true);
+                instance.setExtendedState(JFrame.NORMAL);
+                instance.toFront();
+                instance.requestFocus();
+                GhostClient.log("ClickGui.open(): setVisible done, isVisible=" + instance.isVisible()
+                        + " isShowing=" + instance.isShowing() + " bounds=" + instance.getBounds());
+            } catch (Throwable t) {
+                GhostClient.log("ClickGui.open() FAILED: " + t);
+                writeCrashFile(t);
             }
-            instance.setVisible(true);
-            instance.setExtendedState(JFrame.NORMAL);
-            instance.toFront();
-            instance.requestFocus();
         });
+    }
+
+    private static void writeCrashFile(Throwable t) {
+        try {
+            java.io.File jar = new java.io.File(
+                    ClickGui.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            java.io.File log = new java.io.File(jar.getParentFile(), "elytra-ghost-crash.log");
+            try (java.io.PrintWriter w = new java.io.PrintWriter(new java.io.FileWriter(log, true))) {
+                w.println("--- " + new java.util.Date() + " ---");
+                t.printStackTrace(w);
+            }
+        } catch (Throwable ignored) {
+            // best effort only - GhostClient.log(t) above is the primary record
+        }
     }
 
     private final JPanel list = new JPanel();
