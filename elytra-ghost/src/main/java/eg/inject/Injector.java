@@ -19,8 +19,12 @@ public final class Injector {
     private Injector() {}
 
     public static void main(String[] args) throws Exception {
-        List<VirtualMachineDescriptor> vms = VirtualMachine.list();
         if (args.length == 0) {
+            // Double-clicked, or run with no arguments: GUI if a display is available,
+            // otherwise fall back to the old CLI listing (e.g. over SSH with no X server).
+            boolean headless = java.awt.GraphicsEnvironment.isHeadless();
+            if (!headless) { eg.inject.InjectorGui.open(); return; }
+            List<VirtualMachineDescriptor> vms = VirtualMachine.list();
             System.out.println("PID      DISPLAY NAME");
             for (VirtualMachineDescriptor d : vms)
                 System.out.printf("%-8s %s%s%n", d.id(), d.displayName(), looksLikeMinecraft(d.displayName()) ? "   <-- likely" : "");
@@ -28,27 +32,34 @@ public final class Injector {
             return;
         }
         String pid = args[0];
-        if (vms.stream().noneMatch(d -> d.id().equals(pid))) {
-            System.err.println("PID " + pid + " is not an attachable JVM.");
-            System.exit(2);
-        }
+        inject(pid);
+        System.out.println("Injected " + ownJar() + " into " + pid);
+    }
+
+    /** Attaches this jar as an agent to the given PID. Throws on failure; does not print or exit. */
+    static void inject(String pid) throws Exception {
+        List<VirtualMachineDescriptor> vms = VirtualMachine.list();
+        if (vms.stream().noneMatch(d -> d.id().equals(pid)))
+            throw new IllegalArgumentException("PID " + pid + " is not an attachable JVM.");
         String jar = ownJar();
         VirtualMachine vm = VirtualMachine.attach(pid);
         try {
             vm.loadAgent(jar);
-            System.out.println("Injected " + jar + " into " + pid);
         } finally {
             vm.detach();
         }
     }
 
-    private static boolean looksLikeMinecraft(String n) {
+    static List<VirtualMachineDescriptor> listVms() { return VirtualMachine.list(); }
+
+    static boolean looksLikeMinecraft(String n) {
         String s = n.toLowerCase();
         return s.contains("minecraft") || s.contains("net.fabricmc") || s.contains("cpw.mods")
-                || s.contains("lunar") || s.contains("labymod") || s.contains("launchwrapper");
+                || s.contains("lunar") || s.contains("labymod") || s.contains("launchwrapper")
+                || s.contains("prismlauncher") || s.contains("multimc") || s.contains("modrinth");
     }
 
-    private static String ownJar() throws URISyntaxException {
+    static String ownJar() throws URISyntaxException {
         File f = new File(Injector.class.getProtectionDomain().getCodeSource().getLocation().toURI());
         if (!f.isFile()) throw new IllegalStateException("Run from the built jar, not from a class directory: " + f);
         return f.getAbsolutePath();
