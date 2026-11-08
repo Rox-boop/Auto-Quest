@@ -16,6 +16,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) CP_SEP=";" ;;
+  *) CP_SEP=":" ;;
+esac
+
 MC_VERSION="1.21.11"
 CLIENT_JAR="libs/client-${MC_VERSION}.jar"
 [ -f "$CLIENT_JAR" ] || { echo "run ./build.sh first (it fetches $CLIENT_JAR)" >&2; exit 1; }
@@ -44,12 +49,12 @@ MAPPINGS_TINY="libs/fabric/extracted-mappings/mappings/mappings.tiny"
 echo "step 3: remapping client.jar from official to intermediary names (unverified command, see header comment)..."
 REMAPPED_JAR="libs/fabric/client-${MC_VERSION}-intermediary.jar"
 DEPS_CP=""
-for f in libs/deps/*.jar; do DEPS_CP="$DEPS_CP:$f"; done
-java -jar "$REMAPPER_JAR" "$CLIENT_JAR" "$REMAPPED_JAR" "$MAPPINGS_TINY" official intermediary "${DEPS_CP#:}"
+for f in libs/deps/*.jar; do DEPS_CP="$DEPS_CP${CP_SEP}$f"; done
+java -jar "$REMAPPER_JAR" "$CLIENT_JAR" "$REMAPPED_JAR" "$MAPPINGS_TINY" official intermediary "${DEPS_CP#$CP_SEP}"
 
 echo "step 4: compiling src/fabric against the remapped jar..."
 rm -rf out/fabric-classes && mkdir -p out/fabric-classes
-javac --release 21 -Xlint:all -cp "out/classes:$REMAPPED_JAR$DEPS_CP" -d out/fabric-classes \
+javac --release 21 -Xlint:all -cp "out/classes${CP_SEP}${REMAPPED_JAR}${DEPS_CP}" -d out/fabric-classes \
   $(find src/fabric -name '*.java')
 
 echo "step 5: adding the Fabric bridge classes to out/elytra-ghost.jar..."

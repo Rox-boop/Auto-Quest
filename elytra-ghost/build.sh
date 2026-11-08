@@ -18,6 +18,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# javac/java always want ';' between classpath entries on Windows, even inside Git Bash
+# (it's the real Windows JVM binary parsing argv, not bash) - ':' everywhere else.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) CP_SEP=";" ;;
+  *) CP_SEP=":" ;;
+esac
+
 MC_VERSION="1.21.11"
 MANIFEST_URL="https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 CLIENT_JAR="libs/client-${MC_VERSION}.jar"
@@ -50,13 +57,13 @@ while IFS=, read -r url sha1; do
     got="$(sha1sum "$f" | cut -d' ' -f1)"
     [ "$got" = "$sha1" ] || { echo "dependency sha1 mismatch for $url: got $got, expected $sha1" >&2; exit 1; }
   fi
-  DEPS_CP="$DEPS_CP:$f"
+  DEPS_CP="$DEPS_CP${CP_SEP}$f"
 done < libs-manifest-1.21.11.csv
 
 rm -rf out && mkdir -p out/classes out/test
 
 javac --release 21 -Xlint:all -d out/classes $(find src/main/java -name '*.java')
-javac --release 21 -Xlint:all -cp "out/classes:$CLIENT_JAR$DEPS_CP" -d out/classes $(find src/main/java_unnamed -name '*.java')
+javac --release 21 -Xlint:all -cp "out/classes${CP_SEP}${CLIENT_JAR}${DEPS_CP}" -d out/classes $(find src/main/java_unnamed -name '*.java')
 
 printf 'Main-Class: eg.inject.Injector\nAgent-Class: eg.agent.Agent\nPremain-Class: eg.agent.Agent\nCan-Retransform-Classes: false\nCan-Redefine-Classes: false\n' > out/manifest.mf
 jar cfm out/elytra-ghost.jar out/manifest.mf -C out/classes .
@@ -64,5 +71,5 @@ echo "built out/elytra-ghost.jar"
 
 if [ "${1:-}" = "test" ]; then
   javac --release 21 -cp out/classes -d out/test $(find src/test/java -name '*.java')
-  java -Djava.awt.headless=true -cp out/classes:out/test eg.SelfTest
+  java -Djava.awt.headless=true -cp "out/classes${CP_SEP}out/test" eg.SelfTest
 fi
